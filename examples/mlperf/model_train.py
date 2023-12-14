@@ -191,7 +191,6 @@ def train_maskrcnn():
 
 import os
 if __name__ == "__main__":
-  os.environ["MODEL"] = "resnet"
   with Tensor.train():
     for m in getenv("MODEL", "resnet,retinanet,unet3d,rnnt,bert,maskrcnn").split(","):
       nm = f"train_{m}"
