@@ -6,7 +6,7 @@ if __name__ == "__main__":
   if getenv("DIST"):
     dist.preinit()
     from extra.dist import collectives
-
+    print(f"collectives: {collectives}")
 # tinygrad implementation of https://github.com/tysam-code/hlb-CIFAR10/blob/main/main.py
 # https://myrtle.ai/learn/how-to-train-your-resnet-8-bag-of-tricks/
 # https://siboehm.com/articles/22/CUDA-MMM
@@ -313,10 +313,14 @@ def train_cifar():
       loss.backward()
 
       if getenv("DIST"):
+        from extra.dist import collectives
+        #?????????????
+
         # sync gradients across ranks
         bucket, offset = [], 0
         for _, v in params_dict.items():
           if v.grad is not None: bucket.append(v.grad.flatten())
+        print(f"collectives: {collectives}")
         grads = collectives.allreduce(Tensor.cat(*bucket))
         for _, v in params_dict.items():
           if v.grad is not None:
@@ -431,7 +435,7 @@ if __name__ == "__main__":
       devices = [f"hip:{i}" for i in range(HIP.device_count)]
     else:
       from tinygrad.runtime.ops_gpu import CLDevice
-      devices = [f"gpu:{i}" for i in range(len(CLDevice.device_ids))]
+      devices = [f"gpu:{i}" for i in range(len(CLDevice().device_ids))]
     world_size = len(devices)
 
     # ensure that the batch size is divisible by the number of devices

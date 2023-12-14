@@ -43,8 +43,10 @@ def _process_wrap(rank:int, device:str, oob:_OOB, fn:Callable, args=()):
   from tinygrad import Device
   device, device_num = Device.canonicalize(device), 0 if ":" not in device else int(device.split(":")[-1])
   if "GPU" in device:
-    from tinygrad.runtime.ops_gpu import CL
-    CL.post_init(device_num)
+    pass
+    #old stuff? where are they now dont know
+    #from tinygrad.runtime.ops_gpu import CL
+    #CL.post_init(device_num)
   elif "HIP" in device:
     os.environ["HIP_DEFAULT_DEVICE"] = os.environ["HIP_VISIBLE_DEVICES"] = str(device_num)
   if DEBUG >= 1: print(f"distributed process {rank} initialized runtime for device {device}")

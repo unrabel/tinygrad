@@ -5,9 +5,13 @@ import numpy as np
 from PIL import Image
 import functools, pathlib
 from tinygrad.tensor import Tensor
+from tinygrad.helpers import getenv
 
-BASEDIR = pathlib.Path(__file__).parent / "imagenet"
-ci = json.load(open(BASEDIR / "imagenet_class_index.json"))
+imgnet_dir = getenv("IMGNET_DIR", pathlib.Path(__file__).parent / "imagenet")
+imgnet_dir = pathlib.Path(imgnet_dir)
+print(f"imagenet_dir: {imgnet_dir}")
+
+ci = json.load(open( imgnet_dir / "imagenet_class_index.json"))
 cir = {v[0]: int(k) for k,v in ci.items()}
 
 mean = Tensor([0.485, 0.456, 0.406]).reshape(1,3,1,1)
@@ -16,13 +20,13 @@ img_size = None
 
 @functools.lru_cache(None)
 def get_train_files():
-  train_files = open(BASEDIR / "train_files").read().strip().split("\n")
-  return [(BASEDIR / "train" / x) for x in train_files]
+  train_files = open(imgnet_dir / "train_files").read().strip().split("\n")
+  return [(imgnet_dir / "train" / x).as_posix() for x in train_files]
 
 @functools.lru_cache(None)
 def get_val_files():
-  val_files = glob.glob(str(BASEDIR / "val/*/*"))
-  return val_files
+  val_files = glob.glob(str(imgnet_dir / "val/*/*"))
+  return [pathlib.Path(p).as_posix() for p in val_files]
 
 #rrc = transforms.RandomResizedCrop(224)
 #don't feel good about this but it already used torch functional..?
