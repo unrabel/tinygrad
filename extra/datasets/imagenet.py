@@ -4,10 +4,15 @@ import json
 import numpy as np
 from PIL import Image
 import functools, pathlib
+from tinygrad.tensor import Tensor
 
 BASEDIR = pathlib.Path(__file__).parent / "imagenet"
 ci = json.load(open(BASEDIR / "imagenet_class_index.json"))
 cir = {v[0]: int(k) for k,v in ci.items()}
+
+mean = Tensor([0.485, 0.456, 0.406]).reshape(1,3,1,1)
+std = Tensor([0.229, 0.224, 0.225]).reshape(1,3,1,1)
+img_size = None
 
 @functools.lru_cache(None)
 def get_train_files():
@@ -20,12 +25,24 @@ def get_val_files():
   return val_files
 
 #rrc = transforms.RandomResizedCrop(224)
-import torchvision.transforms.functional as F
-def image_load(fn):
-  img = Image.open(fn).convert('RGB')
-  img = F.resize(img, 256, Image.BILINEAR)
-  img = F.center_crop(img, 224)
-  ret = np.array(img)
+#don't feel good about this but it already used torch functional..?
+import torchvision.transforms as torch_t
+# image loader does the resizing and cropping.. via torchvision transforms..?
+# left out RANDOM FLIP and NORMALIZATION to tinygrad Tensor don't forget
+def image_load(file):
+  img = Image.open(file).convert('RGB')
+  img = torch_t.RandomResizedCrop(size=[img_size,img_size],
+                                  scale=(0.08, 1.),
+                                  ratio=(3.0/4.0, 4.0/3.0),
+                                  interpolation=torch_t.InterpolationMode.BILINEAR).forward(img)
+  ret = np.array(img).transpose(2,0,1)
+  return ret
+
+def image_load_val(file):
+  img = Image.open(file).convert('RGB')
+  img = torch_t.Resize((img_size+32, img_size+32)).forward(img)
+  img = torch_t.CenterCrop((img_size, img_size)).forward(img)
+  ret = np.array(img).transpose(2,0,1)
   return ret
 
 def iterate(bs=32, val=True, shuffle=True):
@@ -44,7 +61,25 @@ def fetch_batch(bs, val=False):
   samp = np.random.randint(0, len(files), size=(bs))
   files = [files[i] for i in samp]
   X = [image_load(x) for x in files]
-  Y = [cir[x.split("/")[0]] for x in files]
+  Y = [cir[x.split("/")[-2]] for x in files]
+  return np.array(X), np.array(Y)
+
+def my_fetch_batch(bs, val=False, inference=False, shuffle=-1):
+  files = get_val_files() if val else get_train_files()
+
+  if shuffle == -1:#shuffle true
+    samp = np.random.randint(0, len(files), size=(bs))
+  else:#shuffle is the last batch pos.
+    samp = range(shuffle, min(shuffle+bs, len(files)))
+  files = [files[i] for i in samp]
+
+  #i use val set to train for now since train set is large mb change later
+  if inference:
+    X = [image_load_val(x) for x in files]
+  else:
+    X = [image_load(x) for x in files]
+
+  Y = [cir[x.split("/")[-2]] for x in files]
   return np.array(X), np.array(Y)
 
 if __name__ == "__main__":
